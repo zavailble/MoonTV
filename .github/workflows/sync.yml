@@ -20,7 +20,28 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v4
 
-      # Step 2: run the sync action
+      # Step 2：【核心新增】拉取上游的 README.md 并覆盖本地（云端执行）
+      - name: Overwrite local README.md with upstream version (cloud-only)
+        run: |
+          # 1. 添加上游仓库地址（若已存在则忽略，避免报错）
+          git remote add upstream https://github.com/senshinya/MoonTV.git || true
+          
+          # 2. 拉取上游仓库最新代码（确保获取到上游最新的 README.md）
+          git fetch upstream
+          
+          # 3. 用上游 main 分支的 README.md 覆盖当前仓库的 README.md
+          git checkout upstream/main -- README.md
+          
+          # 4. 若 README.md 有修改，自动提交并推送到你的 Fork 仓库
+          if git status --porcelain | grep -q README.md; then
+            git config --global user.name "GitHub Actions" # 配置提交者信息（云端临时配置）
+            git config --global user.email "actions@github.com"
+            git add README.md
+            git commit -m "Overwrite README.md with upstream version to fix sync conflict"
+            git push origin main # 推送到你的 Fork 仓库（云端完成）
+          fi
+
+      # Step 3: run the sync action
       - name: Sync upstream changes
         id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
